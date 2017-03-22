@@ -16,22 +16,23 @@
                                            (map #(java.io.File. %)
                                                 (concat source-paths
                                                         test-paths)))))
-            test-files (mapv #(java.io.File. %)
-                             test-paths)
-            test-graph (::track/deps
-                        (file/add-files (dep/graph)
-                                        (mapcat (fn [f]
-                                                  (find/find-clojure-sources-in-dir f))
-                                                test-files)))
+            src-files (mapv #(java.io.File. %)
+                            source-paths)
+            src-graph (::track/deps
+                       (file/add-files (dep/graph)
+                                       (mapcat (fn [f]
+                                                 (find/find-clojure-sources-in-dir f))
+                                               src-files)))
             diff-ns-xs (mapcat #(find/find-namespaces-in-dir (java.io.File. %))
-                               files)]
+                               files)
+            test-diff-ns (cs/difference (set (mapcat (fn [diff-ns]
+                                                       (dep/transitive-dependents graph
+                                                                                  diff-ns))
+                                                     diff-ns-xs))
+                                        (set (dep/nodes src-graph)))]
 
         (println (cstr/join "\n"
-                            (cs/intersection (set (dep/nodes test-graph))
-                                             (set (mapcat (fn [diff-ns]
-                                                            (dep/transitive-dependents graph
-                                                                                       diff-ns))
-                                                          diff-ns-xs))))))))
+                            test-diff-ns)))))
 
 
 (defn test-diff
