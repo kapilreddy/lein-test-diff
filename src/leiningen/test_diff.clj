@@ -13,7 +13,9 @@
     (if (valid-path? node)
       (if-let [n-xs (seq (dep/immediate-dependents g node))]
         (recur g
-               (concat (rest nodes) n-xs)
+               (reduce conj
+                       (rest nodes)
+                       n-xs)
                (reduce conj
                        acc
                        (conj n-xs node))
