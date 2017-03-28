@@ -16,11 +16,11 @@
                (concat (rest nodes) n-xs)
                (reduce conj
                        acc
-                       n-xs)
+                       (conj n-xs node))
                valid-path?)
         (recur g
                (rest nodes)
-               (disj acc node)
+               (conj acc node)
                valid-path?))
       (recur g
              (rest nodes)
@@ -59,19 +59,21 @@
             src-graph-set (set (dep/nodes src-graph))
 
 
-            diff-ns-xs (mapcat #(find/find-namespaces-in-dir (java.io.File. %))
-                               files)
+            diff-ns-set (set (mapcat #(find/find-namespaces-in-dir (java.io.File. %))
+                                     files))
+
             exclude-ns-set (set (mapcat #(find/find-namespaces-in-dir (java.io.File. %))
                                         exclude-paths))
             valid-path? (fn [n]
-                          (and (not (exclude-ns-set n))
-                               (src-graph-set n)))]
+                          (or (and (not (exclude-ns-set n))
+                                   (src-graph-set n))
+                              (diff-ns-set n)))]
 
         (cs/difference (set (mapcat (fn [diff-ns]
                                       (recursive-transitive-dependents graph
                                                                        diff-ns
                                                                        valid-path?))
-                                    diff-ns-xs))
+                                    diff-ns-set))
                        src-graph-set))))
 
 
