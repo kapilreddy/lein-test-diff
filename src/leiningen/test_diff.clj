@@ -6,8 +6,41 @@
             [clojure.set :as cs]
             [clojure.string :as cstr]))
 
+
+(defn recursive-transitive-dependents*
+  [g nodes acc valid-path?]
+  (if-let [node (first nodes)]
+    (if (valid-path? node)
+      (if-let [n-xs (seq (dep/immediate-dependents g node))]
+        (recur g
+               (concat (rest nodes) n-xs)
+               (reduce conj
+                       acc
+                       n-xs)
+               valid-path?)
+        (recur g
+               (rest nodes)
+               (disj acc node)
+               valid-path?))
+      (recur g
+             (rest nodes)
+             acc
+             valid-path?))
+    acc))
+
+
+(defn recursive-transitive-dependents
+  [g node valid-path?]
+  (recursive-transitive-dependents* g
+                                    #{node}
+                                    #{}
+                                    valid-path?))
+
+
+
 (defn test-diff*
-  [source-paths test-paths files]
+  [source-paths test-paths files & {:keys [exclude-paths]
+                                    :or {exclude-paths []}}]
   (when (seq files)
       (let [graph (::track/deps
                    (file/add-files (dep/graph)
@@ -23,23 +56,35 @@
                                        (mapcat (fn [f]
                                                  (find/find-clojure-sources-in-dir f))
                                                src-files)))
+            src-graph-set (set (dep/nodes src-graph))
+
+
             diff-ns-xs (mapcat #(find/find-namespaces-in-dir (java.io.File. %))
                                files)
-            test-diff-ns (cs/difference (set (mapcat (fn [diff-ns]
-                                                       (dep/transitive-dependents graph
-                                                                                  diff-ns))
-                                                     diff-ns-xs))
-                                        (set (dep/nodes src-graph)))]
+            exclude-ns-set (set (mapcat #(find/find-namespaces-in-dir (java.io.File. %))
+                                        exclude-paths))
+            valid-path? (fn [n]
+                          (and (not (exclude-ns-set n))
+                               (src-graph-set n)))]
 
-        (println (cstr/join "\n"
-                            test-diff-ns)))))
+        (cs/difference (set (mapcat (fn [diff-ns]
+                                      (recursive-transitive-dependents graph
+                                                                       diff-ns
+                                                                       valid-path?))
+                                    diff-ns-xs))
+                       src-graph-set))))
 
 
 (defn test-diff
   [project]
   (let [s (slurp *in*)
         files (cstr/split s
-                          #"\n")]
-    (test-diff* (:source-paths project)
-                (:test-paths project)
-                files)))
+                          #"\n")
+        diff-ns-xs (test-diff* (:source-paths project)
+                               (:test-paths project)
+                               files
+                               :exclude-paths (get-in project
+                                                      [:test-diff :exclude-paths]
+                                                      []))]
+    (println (cstr/join "\n"
+                        diff-ns-xs))))
