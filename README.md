@@ -4,7 +4,7 @@ A leiningen plugin that lists tests that are affected by a code change.
 
 # Usage
 
-To install Ultra, just add the following to your `~/.lein/profiles.clj` or project.clj
+To install lein-test-diff, just add the following to your `~/.lein/profiles.clj` or project.clj
 
 ```clojure
 {:user {:plugins [lein-test-diff ["0.0.1-SNAPSHOT"]]}}
