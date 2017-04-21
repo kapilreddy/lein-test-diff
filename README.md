@@ -7,7 +7,7 @@ A leiningen plugin that lists tests that are affected by a code change.
 To install lein-test-diff, just add the following to your `~/.lein/profiles.clj` or project.clj
 
 ```clojure
-{:user {:plugins [lein-test-diff ["0.0.1-SNAPSHOT"]]}}
+{:user {:plugins [[lein-test-diff "0.0.1-SNAPSHOT"]]}}
 ```
 
 Run this to get list of files that are affected by code change
