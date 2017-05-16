@@ -41,42 +41,45 @@
 
 
 (defn test-diff*
-  [source-paths test-paths files & {:keys [exclude-paths]
-                                    :or {exclude-paths []}}]
+  [source-paths test-paths files & {:keys [exclude-paths timeout-secs]
+                                    :or {exclude-paths []
+                                         timeout-secs 60}}]
   (when (seq files)
-      (let [graph (::track/deps
-                   (file/add-files (dep/graph)
-                                   (mapcat (fn [f]
-                                             (find/find-clojure-sources-in-dir f))
-                                           (map #(java.io.File. %)
-                                                (concat source-paths
-                                                        test-paths)))))
-            src-files (mapv #(java.io.File. %)
-                            source-paths)
-            src-graph (::track/deps
-                       (file/add-files (dep/graph)
-                                       (mapcat (fn [f]
-                                                 (find/find-clojure-sources-in-dir f))
-                                               src-files)))
-            src-graph-set (set (dep/nodes src-graph))
+    (future (Thread/sleep (* timeout-secs 1000))
+            (System/exit 1))
+    (let [graph (::track/deps
+                 (file/add-files (dep/graph)
+                                 (mapcat (fn [f]
+                                           (find/find-clojure-sources-in-dir f))
+                                         (map #(java.io.File. %)
+                                              (concat source-paths
+                                                      test-paths)))))
+          src-files (mapv #(java.io.File. %)
+                          source-paths)
+          src-graph (::track/deps
+                     (file/add-files (dep/graph)
+                                     (mapcat (fn [f]
+                                               (find/find-clojure-sources-in-dir f))
+                                             src-files)))
+          src-graph-set (set (dep/nodes src-graph))
 
 
-            diff-ns-set (set (mapcat #(find/find-namespaces-in-dir (java.io.File. %))
-                                     files))
+          diff-ns-set (set (mapcat #(find/find-namespaces-in-dir (java.io.File. %))
+                                   files))
 
-            exclude-ns-set (set (mapcat #(find/find-namespaces-in-dir (java.io.File. %))
-                                        exclude-paths))
-            valid-path? (fn [n]
-                          (or (and (not (exclude-ns-set n))
-                                   (src-graph-set n))
-                              (diff-ns-set n)))]
+          exclude-ns-set (set (mapcat #(find/find-namespaces-in-dir (java.io.File. %))
+                                      exclude-paths))
+          valid-path? (fn [n]
+                        (or (and (not (exclude-ns-set n))
+                                 (src-graph-set n))
+                            (diff-ns-set n)))]
 
-        (cs/difference (set (mapcat (fn [diff-ns]
-                                      (recursive-transitive-dependents graph
-                                                                       diff-ns
-                                                                       valid-path?))
-                                    diff-ns-set))
-                       src-graph-set))))
+      (cs/difference (set (mapcat (fn [diff-ns]
+                                    (recursive-transitive-dependents graph
+                                                                     diff-ns
+                                                                     valid-path?))
+                                  diff-ns-set))
+                     src-graph-set))))
 
 
 (defn test-diff
@@ -87,6 +90,13 @@
         diff-ns-xs (test-diff* (:source-paths project)
                                (:test-paths project)
                                files
+                               :timeout-secs
+                               (or (Integer/parseInt (get (System/getenv)
+                                                          "LEIN_TEST_DIFF_TIMEOUT"))
+                                   (get-in project
+                                           [:test-diff :timeout]
+                                           60))
+
                                :exclude-paths (get-in project
                                                       [:test-diff :exclude-paths]
                                                       []))]
