@@ -91,11 +91,12 @@
                                (:test-paths project)
                                files
                                :timeout-secs
-                               (or (Integer/parseInt (get (System/getenv)
-                                                          "LEIN_TEST_DIFF_TIMEOUT"))
-                                   (get-in project
-                                           [:test-diff :timeout]
-                                           60))
+                               (if-let [env-timeout (get (System/getenv)
+                                                         "LEIN_TEST_DIFF_TIMEOUT")]
+                                 (Integer/parseInt env-timeout)
+                                 (get-in project
+                                         [:test-diff :timeout]
+                                         60))
 
                                :exclude-paths (get-in project
                                                       [:test-diff :exclude-paths]
