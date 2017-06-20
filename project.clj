@@ -1,4 +1,4 @@
-(defproject lein-test-diff "0.0.1"
+(defproject lein-test-diff "0.0.2"
   :description "Leiningen plugin that lists test namespaces based on code diffs"
   :url "https://github.com/kapilreddy/lein-test-diff"
   :license {:name "Eclipse Public License"
